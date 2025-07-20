@@ -1,0 +1,87 @@
+<!-- ✅ index.html - Updated to pass token in URL -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>RGUKT Login Redirect</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f4f8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+
+    .card {
+      background: #fff;
+      padding: 30px 40px;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      text-align: center;
+    }
+
+    h2 {
+      color: #2d3748;
+      margin-bottom: 15px;
+    }
+
+    p {
+      color: #4a5568;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>🔐 Checking Access...</h2>
+    <p>Please wait while we verify your identity.</p>
+  </div>
+
+  <script>
+    const hash = window.location.hash.substring(1);
+    const params = new URLSearchParams(hash);
+    const idToken = params.get("id_token");
+
+    if (!idToken) {
+      const domain = "https://us-east-1thl1ax6yl.auth.us-east-1.amazoncognito.com";
+      const clientId = "4cfbc9jp99luv3uh9dqfltadkf";
+      const redirectUri = "https://attendance-m-system.s3.amazonaws.com/Attendance/index.html";
+      const loginUrl = `${domain}/login?client_id=${clientId}&response_type=token&scope=email+openid+profile&redirect_uri=${encodeURIComponent(redirectUri)}`;
+      window.location.href = loginUrl;
+    } else {
+      try {
+        const payload = JSON.parse(atob(idToken.split('.')[1]));
+        const email = payload.email || "";
+
+        if (!email.endsWith("@rguktsklm.ac.in")) {
+          alert("Access denied. Only RGUKT SKLM students are allowed.");
+          window.location.href = "denied.html";
+        } else {
+          const studentId = email.split('@')[0];
+          const apiUrl = "https://2652jdx1g6.execute-api.us-east-1.amazonaws.com/getStudentInfo";
+
+          fetch(`${apiUrl}?studentId=${studentId}`)
+            .then(res => res.json())
+            .then(data => {
+              if (data && data.studentId) {
+                window.location.href = `attendance.html#id_token=${idToken}`;
+              } else {
+                window.location.href = `register.html#id_token=${idToken}`;
+              }
+            })
+            .catch(err => {
+              console.error("Error checking student registration:", err);
+              alert("⚠️ Error checking registration. Try again.");
+            });
+        }
+      } catch (err) {
+        console.error("Invalid token or decoding failed", err);
+        alert("⚠️ Invalid session. Please login again.");
+        window.location.href = "index.html";
+      }
+    }
+  </script>
+</body>
+</html>
